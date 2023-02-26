@@ -18,36 +18,65 @@ connection.connect((error) => {
   }
 });
 
-connection.query('SELECT * FROM users', (error, results, fields) => {
-    if (error) {
-      console.error('Failed to fetch data from RDS database:', error);
-    } else {
-      console.log('Fetched data from RDS database:', results);
-    }
-  });
-
 const app = express();
-
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-
-
-// Set up a route to serve the HTML page
-app.get('/', function(req, res) {
-    res.sendFile(__dirname + '/index.html');
+app.get('/', (req, res) => {
+  // Perform a SELECT query on the database
+  connection.query('SELECT * FROM users', (error, results, fields) => {
+    if (error) {
+      console.error('Failed to fetch data from RDS database:', error);
+      res.status(500).send('Failed to fetch data from RDS database');
+    } else {
+      console.log('Fetched data from RDS database:', results);
+      // Send the query results back to the client as HTML table
+      const tableRows = results.map(result => `<tr><td>${result.ID}</td><td>${result.NAME}</td><td>${result.AGE}</td><td>${result.INCOME}</td><td>${result.NUMBER}</td></tr>`).join('');
+      const html = `
+        <html>
+          <head>
+            <title>Query Results</title>
+            <style>
+              table {
+                border-collapse: collapse;
+                width: 100%;
+              }
+              th, td {
+                text-align: left;
+                padding: 8px;
+                border: 1px solid #ddd;
+              }
+              th {
+                background-color: #4CAF50;
+                color: white;
+              }
+              tr:nth-child(even) {
+                background-color: #f2f2f2;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Query Results</h1>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+      res.send(html);
+    }
   });
-  
-  // Set up a route to handle button clicks
-  app.get('/query', function(req, res) {
-    // Perform a SELECT query on the database
-    connection.query('SELECT * FROM users', function(error, results, fields) {
-      if (error) throw error;
-      // Send the query results back to the client as JSON
-      res.json(results);
-    });
-  });
+});
 
 app.listen(80, () => {
   console.log('Server started on port 80');
